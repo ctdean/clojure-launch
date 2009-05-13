@@ -1,0 +1,136 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'fileutils'
+require 'find'
+
+class App
+  VERSION = '0.2.0'
+  CLOJURE_JAR_DEFAULT = "/usr/local/lib/clojure.jar"
+  
+  def initialize( args )
+    @dir = "."
+    @ensure_classes = false
+    @clojure_jar = CLOJURE_JAR_DEFAULT
+    @find = false
+    @screen = false
+    @rlwrap = true
+
+    opts = OptionParser.new do |opts|
+      opts.banner = "Usage: #{$0} [options]"
+
+      opts.on( "-h", "--help", "Show this message" ) do
+        puts opts
+        exit
+      end
+      opts.on_tail("--version", "Show version") do
+        puts VERSION
+        exit
+      end
+      opts.on( "--dir dir", "The top dir of the program.  ",
+               "Turns on --find" ) do |x|
+        @dir = x
+        @find = true
+        @clojure_jar = false
+      end
+      opts.on( "--[no-]ensure-classes", "Ensure the classes dir exists" ) do |x|
+        @ensure_classes = x
+      end
+      opts.on( "--[no-]find", "Walk the dir tree looking for jars, ", 
+               "classes, and properties files.",
+               "Turning on --find turns off --clojure") do |x|
+        @find = x
+        if @find
+          @clojure_jar = false
+        end
+      end
+      opts.on( "--clojure JAR", "The location of clojure.jar or false.", 
+               "Defaults to #{CLOJURE_JAR_DEFAULT}" ) do |x|
+        if x == 'false'
+          @clojure_jar = false
+        else
+          @clojure_jar = x
+        end
+      end
+      opts.on( "--[no-]rlwrap", "Run clojure under rlwrap" ) do |x|
+        @rlwrap = x
+      end
+      opts.on( "--[no-]screen", "Run session in a detached screen" ) do |x|
+        @screen = x
+      end
+    end
+
+    opts.parse!( args )
+  end
+
+  def run
+    FileUtils.mkdir_p( "#{@dir}/classes" ) if @ensure_classes
+
+    exec_program make_classpath
+  end
+
+  def exec_program( classpath )
+    if ENV["CLASSPATH"]
+      ENV["CLASSPATH"] = "#{classpath}:#{ENV["CLASSPATH"]}"
+    else
+      ENV["CLASSPATH"] = classpath
+    end
+
+    cmd  = [ "java", "-server", "-Dclojure.compile.path='#{@dir}/classes'",
+             "clojure.main" ]
+
+    if @rlwrap
+      cmd = [find_exe( "rlwrap" )] + cmd
+    end
+
+    if @screen
+      cmd = ["screen", "-S", make_screen_name, "-d", "-m" ] + cmd
+    end
+
+    puts cmd.inspect
+    exec *cmd
+  end
+
+  def find_exe( name )
+    (ENV["PATH"] || "").split( ":" ).each do |d|
+      path = File.expand_path name, d
+      return path if File.executable? path
+    end
+
+    return File.expand_path name
+  end
+
+  def make_classpath
+    entries = []
+    
+    user_init = File.expand_path "~/.clojure"
+    entries.push user_init if File.directory? user_init
+
+    %w(src properties classes).each do |name|
+      subdir = "#{@dir}/#{name}"
+      entries.push subdir if File.directory? subdir
+    end
+
+    if @find
+      Find.find( @dir ) do |name|
+        if name.match /\.jar$/ 
+          entries.push name
+        end
+      end
+    end
+
+    entries.push @clojure_jar if @clojure_jar
+
+    entries.join ":"
+  end
+
+  def make_screen_name
+    if @dir == "."
+      "clojure"
+    else
+      File.basename @dir
+    end
+  end
+end
+
+App.new( ARGV ).run

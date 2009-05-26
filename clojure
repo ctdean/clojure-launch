@@ -5,7 +5,7 @@ require 'fileutils'
 require 'find'
 
 class App
-  VERSION = '0.2.0'
+  VERSION = '0.3.0'
   CLOJURE_JAR_DEFAULT = "/usr/local/lib/clojure.jar"
   
   def initialize( args )
@@ -15,6 +15,7 @@ class App
     @find = false
     @screen = false
     @rlwrap = true
+    @heap = "1G"
 
     opts = OptionParser.new do |opts|
       opts.banner = "Usage: #{$0} [options]"
@@ -55,8 +56,9 @@ class App
       opts.on( "--[no-]rlwrap", "Run clojure under rlwrap" ) do |x|
         @rlwrap = x
       end
-      opts.on( "--[no-]screen", "Run session in a detached screen" ) do |x|
-        @screen = x
+      opts.on( "--[no-]heap SIZE", "Set maximum Java heap size.",
+               "Defaults to #{@heap}") do |x|
+        @heap = x
       end
     end
 
@@ -76,8 +78,13 @@ class App
       ENV["CLASSPATH"] = classpath
     end
 
-    cmd  = [ "java", "-server", "-Dclojure.compile.path='#{@dir}/classes'",
-             "clojure.main" ]
+    cmd  = [ "java", "-server", "-Dclojure.compile.path='#{@dir}/classes'"]
+    
+    if @heap
+      cmd += [ "-Xmx#{@heap}" ]
+    end
+
+    cmd +=  [ "clojure.main" ]
 
     if @rlwrap
       cmd = [find_exe( "rlwrap" )] + cmd
@@ -88,6 +95,7 @@ class App
     end
 
     puts cmd.inspect
+
     exec *cmd
   end
 

@@ -16,6 +16,7 @@ class App
     @screen = false
     @rlwrap = true
     @heap = "1G"
+    @verbose = false
 
     opts = OptionParser.new do |opts|
       opts.banner = "Usage: #{$0} [options]"
@@ -56,6 +57,9 @@ class App
       opts.on( "--[no-]rlwrap", "Run clojure under rlwrap" ) do |x|
         @rlwrap = x
       end
+      opts.on( "--[no-]verbose", "Print the command run" ) do |x|
+        @verbose = x
+      end
       opts.on( "--[no-]heap SIZE", "Set maximum Java heap size.",
                "Defaults to #{@heap}") do |x|
         @heap = x
@@ -94,7 +98,10 @@ class App
       cmd = ["screen", "-S", make_screen_name, "-d", "-m" ] + cmd
     end
 
-    puts cmd.inspect
+    if @verbose
+      puts "ClASSPATH: #{ENV["CLASSPATH"].split( ":" ).inspect}"
+      puts "command: #{cmd.inspect}"
+    end
 
     exec *cmd
   end
@@ -123,6 +130,12 @@ class App
       Find.find( @dir ) do |name|
         if name.match /\.jar$/ 
           entries.push name
+        end
+        if name.match %r,^(.*/src)/.*\.clj$, 
+          entries.push $1 unless entries.member? $1
+        end
+        if name.match %r,^(.*/classes)/.*\.class$, 
+          entries.push $1 unless entries.member? $1
         end
       end
     end

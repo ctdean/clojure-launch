@@ -5,9 +5,10 @@ require 'fileutils'
 require 'find'
 
 class App
-  VERSION = '0.3.0'
+  VERSION = '0.5.0'
   CLOJURE_JAR_DEFAULT = "/usr/local/lib/clojure.jar"
-  
+  CLOJURE_MAIN = "clojure.main"  
+
   def initialize( args )
     @dir = "."
     @ensure_classes = false
@@ -17,11 +18,22 @@ class App
     @rlwrap = true
     @heap = "1G"
     @verbose = false
+    @jars = []
+    @java_args = []
+    @startup = false
 
     opts = OptionParser.new do |opts|
-      opts.banner = "Usage: #{$0} [options]"
+      opts.banner = ["Usage: #{$0} [options] [args]",
+                     "",
+                     "Construct and run clojure under Java.",
+                     "",
+                     "All additional args are passed on the java command line.",
+                     "If no additional args are given #{CLOJURE_MAIN} is used.",
+                     "",
+                     ""
+                     ].join( "\n" )
 
-      opts.on( "-h", "--help", "Show this message" ) do
+      opts.on( "--help", "Show this message" ) do
         puts opts
         exit
       end
@@ -64,9 +76,28 @@ class App
                "Defaults to #{@heap}") do |x|
         @heap = x
       end
+      opts.on( "--jar FILE", "Add FILE to the classpath" ) do |x|
+        @jars.push x
+      end
+      opts.on( "--java-arg ARG",
+               "Add ARG to the end of the java options" ) do |x|
+        @java_args.push x
+      end
     end
 
-    opts.parse!( args )
+    begin
+      opts.parse!( args )
+    rescue
+      printf( "%s: %s\n", $0, $! ) 
+      printf( "Use --help for more information.\n" ) 
+      exit
+    end
+
+    if args.empty?
+      @startup = [CLOJURE_MAIN]
+    else
+      @startup = args
+    end
   end
 
   def run
@@ -88,11 +119,13 @@ class App
       cmd += [ "-Xmx#{@heap}" ]
     end
 
+    cmd += @java_args
+
     # if ENV["LD_LIBRARY_PATH"]
     #   cmd += [ "-Djava.library.path=#{ENV["LD_LIBRARY_PATH"]}" ]
     # end
 
-    cmd +=  [ "clojure.main" ]
+    cmd += @startup
 
     if @rlwrap
       cmd = [find_exe( "rlwrap" )] + cmd
@@ -145,6 +178,7 @@ class App
     end
 
     entries.push @clojure_jar if @clojure_jar
+    entries += @jars
 
     entries.join ":"
   end

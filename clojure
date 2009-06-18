@@ -88,6 +88,10 @@ class App
       cmd += [ "-Xmx#{@heap}" ]
     end
 
+    # if ENV["LD_LIBRARY_PATH"]
+    #   cmd += [ "-Djava.library.path=#{ENV["LD_LIBRARY_PATH"]}" ]
+    # end
+
     cmd +=  [ "clojure.main" ]
 
     if @rlwrap
@@ -112,7 +116,7 @@ class App
       return path if File.executable? path
     end
 
-    return File.expand_path name
+    return File.expand_path( name )
   end
 
   def make_classpath

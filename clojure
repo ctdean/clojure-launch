@@ -15,20 +15,28 @@ class App
     @clojure_jar = CLOJURE_JAR_DEFAULT
     @find = false
     @screen = false
+    @screen_name = false
     @rlwrap = true
     @heap = "1G"
     @verbose = false
     @jars = []
     @java_args = []
+    @user_init = true
     @startup = false
+
+    requires = []
+    evals = []
 
     opts = OptionParser.new do |opts|
       opts.banner = ["Usage: #{$0} [options] [args]",
                      "",
                      "Construct and run clojure under Java.",
                      "",
+                     "By default we just run #{CLOJURE_MAIN} and start a repl",
+                     "",
                      "All additional args are passed on the java command line.",
-                     "If no additional args are given #{CLOJURE_MAIN} is used.",
+                     "If no additional args are given the default startup",
+                     "sequence is used.",
                      "",
                      ""
                      ].join( "\n" )
@@ -66,8 +74,17 @@ class App
           @clojure_jar = x
         end
       end
-      opts.on( "--[no-]rlwrap", "Run clojure under rlwrap" ) do |x|
+      opts.on( "--[no-]rlwrap", 
+               "Run clojure under rlwrap (default: on)" ) do |x|
         @rlwrap = x
+      end
+      opts.on( "--[no-]screen", 
+               "Run clojure under screen (default: off)" ) do |x|
+        @screen = x
+      end
+      opts.on( "--name SCREEN-NAME", 
+               "Set the session name for screen" ) do |x|
+        @screen_name = x
       end
       opts.on( "--[no-]verbose", "Print the command run" ) do |x|
         @verbose = x
@@ -79,9 +96,22 @@ class App
       opts.on( "--jar FILE", "Add FILE to the classpath" ) do |x|
         @jars.push x
       end
+      opts.on( "--require PACKAGE",
+               "Require this during the default startup" ) do |x|
+        requires.push x
+      end
+      opts.on( "--eval EXPRESSION",
+               "Eval this during the default startup" ) do |x|
+        evals.push x
+      end
       opts.on( "--java-arg ARG",
                "Add ARG to the end of the java options" ) do |x|
         @java_args.push x
+      end
+      opts.on( "--[no-]user-init",
+               "Add ~/.clojure to the class path if",
+               "it exists" ) do |x|
+        @user_init = x
       end
     end
 
@@ -94,7 +124,7 @@ class App
     end
 
     if args.empty?
-      @startup = [CLOJURE_MAIN]
+      @startup = standard_startup( requires, evals )
     else
       @startup = args
     end
@@ -104,6 +134,18 @@ class App
     FileUtils.mkdir_p( "#{@dir}/classes" ) if @ensure_classes
 
     exec_program make_classpath
+  end
+
+  def standard_startup( requires, evals )
+    start = [ CLOJURE_MAIN ]
+    requires.each do |r|
+      start += ["--eval", "(require '#{r})"]
+    end
+    evals.each do |e|
+      start += ["--eval", e]
+    end
+    
+    start += ["--repl"]
   end
 
   def exec_program( classpath )
@@ -121,9 +163,9 @@ class App
 
     cmd += @java_args
 
-    # if ENV["LD_LIBRARY_PATH"]
-    #   cmd += [ "-Djava.library.path=#{ENV["LD_LIBRARY_PATH"]}" ]
-    # end
+    if ENV["LD_LIBRARY_PATH"]
+      cmd += [ "-Djava.library.path=#{ENV["LD_LIBRARY_PATH"]}" ]
+    end
 
     cmd += @startup
 
@@ -154,9 +196,11 @@ class App
 
   def make_classpath
     entries = []
-    
-    user_init = File.expand_path "~/.clojure"
-    entries.push user_init if File.directory? user_init
+  
+    if @user_init
+      d = File.expand_path "~/.clojure"
+      entries.push d if File.directory? d
+    end
 
     %w(src properties classes).each do |name|
       subdir = "#{@dir}/#{name}"
@@ -164,7 +208,8 @@ class App
     end
 
     if @find
-      Find.find( @dir ) do |name|
+      real_dir = if File.symlink?( @dir ) then "#{@dir}/" else @dir end
+      Find.find( real_dir ) do |name|
         if name.match /\.jar$/ 
           entries.push name
         end
@@ -184,10 +229,12 @@ class App
   end
 
   def make_screen_name
-    if @dir == "."
+    if @screen_name
+      @screen_name
+    elsif @dir == "."
       "clojure"
     else
-      File.basename @dir
+      @dir.gsub( "/", "." )
     end
   end
 end

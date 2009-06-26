@@ -162,11 +162,6 @@ class App
     end
 
     cmd += @java_args
-
-    if ENV["LD_LIBRARY_PATH"]
-      cmd += [ "-Djava.library.path=#{ENV["LD_LIBRARY_PATH"]}" ]
-    end
-
     cmd += @startup
 
     if @rlwrap

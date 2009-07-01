@@ -49,22 +49,22 @@ class App
         puts VERSION
         exit
       end
-      opts.on( "--dir dir", "The top dir of the program.  ",
-               "Turns on --find" ) do |x|
+      opts.on( "--project dir", "Sets the top project dir of the program.  ",
+               "Turns on --find and sets --clojure to false" ) do |x|
         @dir = x
         @find = true
         @clojure_jar = false
+      end
+      opts.on( "--dir dir", "Sets top dir of the program.  ",
+               "Defaults to '.'") do |x|
+        @dir = x
       end
       opts.on( "--[no-]ensure-classes", "Ensure the classes dir exists" ) do |x|
         @ensure_classes = x
       end
       opts.on( "--[no-]find", "Walk the dir tree looking for jars, ", 
-               "classes, and properties files.",
-               "Turning on --find turns off --clojure") do |x|
-        @find = x
-        if @find
-          @clojure_jar = false
-        end
+               "classes, and properties files." ) do |x|
+        @find = true
       end
       opts.on( "--clojure JAR", "The location of clojure.jar or false.", 
                "Defaults to #{CLOJURE_JAR_DEFAULT}" ) do |x|

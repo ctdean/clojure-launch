@@ -1,0 +1,49 @@
+#!/bin/sh
+#
+# Startup script for a sample project
+#
+# chkconfig: 345 91 10
+# description: My double plus good app!
+
+PROJECT=sample
+PROJECT_USER=sample-user
+PROJECT_REQUIRE="sample.app"
+PROJECT_STARTUP="'(sample.app/start-app)'"
+PROJECT_DIR=/project/$PROJECT/current
+
+CLOJURE=$PROJECT_DIR/bin/clojure
+
+export PATH=$PATH:/usr/bin:/usr/local/bin
+
+# See how we were called.
+case "$1" in
+  start)
+        # Start daemon.
+        echo -n "Starting $PROJECT: "
+        if [ -x $CLOJURE ]; then
+          su -l $PROJECT_USER -c \
+              "$CLOJURE --screen --name $PROJECT \
+              --project $PROJECT_DIR \
+              --require $PROJECT_REQUIRE \
+              --eval $PROJECT_STARTUP"
+          echo "done"
+        else   
+            echo "Not available"
+        fi
+        ;;
+  stop)
+        # Stop daemons.
+        echo -n "Shutting down $PROJECT: "
+        su -l $PROJECT_USER -c "screen -S $PROJECT -X quit"
+        echo "done"
+        ;;
+  restart)
+        $0 stop
+        $0 start
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit 0

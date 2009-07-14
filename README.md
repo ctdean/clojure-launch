@@ -31,7 +31,7 @@ The classpath will also have any src, classes, or properties
 directories that exists under the MY-PROJECT tree.  Then java will be
 run with the proper arguments to create a clojure repl.
 
-3. Run clojure in an init.d script.
+3. Run clojure in a Unix init.d script.
 
     su -l $PROJECT_USER -c \
         $CLOJURE --screen --name $PROJECT \
@@ -40,8 +40,9 @@ run with the proper arguments to create a clojure repl.
         --eval $PROJECT_STARTUP
 
 This will create the classpath as before and then run a clojure repl
-under screen.  It will also require the given namespace and eval the
-startup code.
+under screen.  All done under the given user.  It will also require
+the given namespace and eval the startup code.  There is a sample init
+file in this directory.
 
 -- Chris Dean ctdean@sokitomi.com
 

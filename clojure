@@ -16,6 +16,7 @@ class App
     @find = false
     @screen = false
     @screen_name = false
+    @screen_fork = false
     @rlwrap = true
     @heap = "1G"
     @verbose = false
@@ -79,7 +80,11 @@ class App
         @rlwrap = x
       end
       opts.on( "--[no-]screen", 
-               "Run clojure under screen (default: off)" ) do |x|
+               "Run clojure under a detached screen (default: off)" ) do |x|
+        @screen = x
+      end
+      opts.on( "--[no-]fork", 
+               "When using screen, fork a new process (default: off)" ) do |x|
         @screen = x
       end
       opts.on( "--name SCREEN-NAME", 
@@ -169,7 +174,8 @@ class App
     end
 
     if @screen
-      cmd = ["screen", "-S", make_screen_name, "-d", "-m" ] + cmd
+      cmd = ["screen", "-S", make_screen_name, 
+             (@screen_fork ? "-d" : "-D"), "-m" ] + cmd
     end
 
     if @verbose

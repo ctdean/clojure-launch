@@ -68,6 +68,8 @@ file in this directory.
                                      Defaults to /usr/local/lib/clojure.jar
         --[no-]rlwrap                Run clojure under rlwrap (default: on)
         --[no-]screen                Run clojure under screen (default: off)
+        --[no-]fork                  When using screen, fork a new process 
+                                     (default: off)
         --name SCREEN-NAME           Set the session name for screen
         --[no-]verbose               Print the command run
         --[no-]heap SIZE             Set maximum Java heap size.
